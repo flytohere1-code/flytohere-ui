@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Buscador de Vuelos de Llegada</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f7fc;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    .flight {
+      border: 1px solid #e0e0e0;
+      padding: 15px;
+      margin-top: 10px;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    .flight h3 {
+      margin: 0 0 10px 0;
+      color: #2c3e50;
+    }
+    .flight p {
+      margin: 5px 0;
+    }
+    .buy-btn {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: #27ae60;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .buy-btn:hover {
+      background: #219653;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+    .loading {
+      text-align: center;
+      color: #7f8c8d;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>✈️ Buscador de Vuelos de Llegada</h1>
+    <p>Busca todos los vuelos que llegan a un aeropuerto en una fecha específica.</p>
+
+    <div class="form-group">
+      <label for="airport">Código del Aeropuerto (IATA, ej: MAD, JFK, LAX):</label>
+      <input type="text" id="airport" placeholder="Ej: MAD" maxlength="3" />
+    </div>
+
+    <div class="form-group">
+      <label for="date">Fecha de llegada:</label>
+      <input type="date" id="date" value="2025-08-27" />
+    </div>
+
+    <button onclick="buscarVuelos()">Buscar Vuelos</button>
+
+    <div id="resultados"></div>
+  </div>
+
+  <script>
+    const API_KEY = 'TU_API_KEY_FLIGHTLABS';
+    const API_URL = 'https://api.flightlabs.io/v1/flights';
+
+    async function buscarVuelos() {
+      const airport = document.getElementById('airport').value.trim().toUpperCase();
+      const date = document.getElementById('date').value;
+      const resultadosDiv = document.getElementById('resultados');
+      resultadosDiv.innerHTML = '';
+
+      if (!airport || airport.length !== 3) {
+        resultadosDiv.innerHTML = '<p class="error">Por favor, introduce un código IATA válido de 3 letras.</p>';
+        return;
+      }
+      if (!date) {
+        resultadosDiv.innerHTML = '<p class="error">Por favor, selecciona una fecha.</p>';
+        return;
+      }
+
+      resultadosDiv.innerHTML = '<p class="loading">Buscando vuelos...</p>';
+
+      try {
+        const res = await fetch(`${API_URL}?access_key=${API_KEY}&arr_iata=${airport}&flight_date=${date}`);
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+          throw new Error(data.error?.message || 'Error al obtener los datos');
+        }
+
+        if (!data.data || data.data.length === 0) {
+          resultadosDiv.innerHTML = '<p>No se encontraron vuelos para esa fecha.</p>';
+          return;
+        }
+
+        let html = `<h2>✈️ ${data.data.length} vuelo(s) que llegan a ${airport} el ${date}:</h2>`;
+        data.data.forEach(vuelo => {
+          const aerolinea = vuelo.airline?.name || 'Desconocida';
+          const numVuelo = vuelo.flight?.number || 'No disponible';
+          const origen = vuelo.departure?.airport || 'Desconocido';
+          const horaLlegada = vuelo.arrival?.scheduled || 'No disponible';
+          const enlaceCompra = `https://www.google.com/travel/flights?q=${aerolinea}+${numVuelo}+${airport}+${date}`;
+
+          html += `
+            <div class="flight">
+              <h3>${aerolinea} - Vuelo ${numVuelo}</h3>
+              <p><strong>Origen:</strong> ${origen}</p>
+              <p><strong>Hora de llegada:</strong> ${horaLlegada}</p>
+              <a href="${enlaceCompra}" target="_blank" class="buy-btn">Comprar este vuelo</a>
+            </div>
+          `;
+        });
+
+        resultadosDiv.innerHTML = html;
+      } catch (error) {
+        resultadosDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    }
+  </script>
+</body>
+</html>
